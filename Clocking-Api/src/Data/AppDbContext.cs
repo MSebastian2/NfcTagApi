@@ -1,31 +1,105 @@
-using Data.Entities;
+using Clocking.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Data;
+namespace Clocking.Api.Data;
 
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<Employee> Employees => Set<Employee>();
-    public DbSet<NfcTag> NfcTags => Set<NfcTag>();
-    public DbSet<PunchEvent> PunchEvents => Set<PunchEvent>();
+    public DbSet<Worker> Workers => Set<Worker>();
+    public DbSet<Reader> Readers => Set<Reader>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<Scan> Scans => Set<Scan>();
+    public DbSet<WorkSession> WorkSessions => Set<WorkSession>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
-        b.Entity<NfcTag>().HasIndex(t => t.Uid).IsUnique();
-        b.Entity<NfcTag>()
-            .HasOne(t => t.Employee)
-            .WithMany(e => e.Tags)
-            .HasForeignKey(t => t.EmployeeId);
+        // Worker
+        b.Entity<Worker>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.TagUid).HasMaxLength(64);
+            e.HasIndex(x => x.TagUid).IsUnique();           // one tag per worker
+            e.Property(x => x.IsActive).HasDefaultValue(true);
 
-        b.Entity<PunchEvent>()
-            .HasOne(p => p.Employee)
-            .WithMany(e => e.Punches)
-            .HasForeignKey(p => p.EmployeeId);
-        b.Entity<PunchEvent>()
-            .HasOne(p => p.Tag)
-            .WithMany()
-            .HasForeignKey(p => p.TagId);
+            e.HasMany(x => x.WorkSessions)
+             .WithOne(ws => ws.Worker)
+             .HasForeignKey(ws => ws.WorkerId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasMany(x => x.Scans)
+             .WithOne(s => s.Worker)
+             .HasForeignKey(s => s.WorkerId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Reader
+        b.Entity<Reader>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Code).HasMaxLength(64).IsRequired(); // unique device code
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.IsActive).HasDefaultValue(true);
+
+            e.HasOne(x => x.Location)
+             .WithMany(l => l.Readers)
+             .HasForeignKey(x => x.LocationId)
+             .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Location
+        b.Entity<Location>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Code).HasMaxLength(64);
+            e.HasIndex(x => x.Code); // not necessarily unique—adjust if needed
+        });
+
+        // Scan (raw tap log)
+        b.Entity<Scan>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Uid).HasMaxLength(64); // card UID captured on scan
+            e.Property(x => x.OccurredAtUtc).IsRequired();
+
+            e.HasOne(x => x.Worker)
+             .WithMany(w => w.Scans)
+             .HasForeignKey(x => x.WorkerId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Reader)
+             .WithMany()
+             .HasForeignKey(x => x.ReaderId)
+             .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // WorkSession (in/out pair)
+        b.Entity<WorkSession>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.StartUtc).IsRequired();
+            e.Property(x => x.EndUtc); // null when still clocked-in
+
+            e.HasOne(x => x.Worker)
+             .WithMany(w => w.WorkSessions)
+             .HasForeignKey(x => x.WorkerId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.StartReader)
+             .WithMany()
+             .HasForeignKey(x => x.StartReaderId)
+             .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasOne(x => x.EndReader)
+             .WithMany()
+             .HasForeignKey(x => x.EndReaderId)
+             .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        base.OnModelCreating(b);
     }
 }
