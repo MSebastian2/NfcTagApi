@@ -1,0 +1,48 @@
+### health
+GET http://localhost:5000/health
+
+### create worker
+POST http://localhost:5000/v1/workers
+Content-Type: application/json
+
+{
+  "full_name": "Ion Ionescu",
+  "department": "Construction",
+  "role": "Electrician"
+}
+
+### assign NFC to worker (replace :id)
+POST http://localhost:5000/v1/workers/1/nfc
+Content-Type: application/json
+
+{
+  "uid_hex": "04FFEEDDCC11",
+  "deactivate_others": true
+}
+
+### reader heartbeat (paste your device key from console)
+POST http://localhost:5000/v1/readers/heartbeat
+Authorization: Bearer REPLACE_DEVICE_KEY
+
+### simulate scan (paste the same device key)
+POST http://localhost:5000/v1/scans
+Authorization: Bearer REPLACE_DEVICE_KEY
+Content-Type: application/json
+
+{ "uid_hex": "04FFEEDDCC11" }
+
+### simulate checkout (run again)
+POST http://localhost:5000/v1/scans
+Authorization: Bearer REPLACE_DEVICE_KEY
+Content-Type: application/json
+
+{ "uid_hex": "04FFEEDDCC11" }
+
+### list sessions for worker 1
+GET http://localhost:5000/v1/workers/1/sessions
+
+### hours report (all workers, last 90 days)
+GET http://localhost:5000/v1/reports/hours?from=2025-01-01&to=2025-12-31
+
+### hours report (construction only)
+GET http://localhost:5000/v1/reports/hours?from=2025-01-01&to=2025-12-31&location_type=construction

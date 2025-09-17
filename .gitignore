@@ -1,0 +1,38 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# .NET / Visual Studio
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# EF Core / SQLite (keep migrations, ignore the DB file)
+Clocking.Api/clocking.db
+Clocking.Api/clocking.db-shm
+Clocking.Api/clocking.db-wal
+*.db-shm
+*.db-wal
+
+# Node / Frontend
+**/node_modules/
+**/dist/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env & secrets
+.env
+.env.*.local
+ReaderGateway/.env
+web-frontend/.env
+web-frontend/.env.*

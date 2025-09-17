@@ -3427,11 +3427,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\TestOrLearning\\ReturnToPunchcards\\Clocking.Api\\Clocking.Api.csproj",
+      "projectUniqueName": "D:\\TestOrLearning\\ReturnToPunchcards\\Clocking-Api\\Clocking.Api.csproj",
       "projectName": "Clocking.Api",
-      "projectPath": "D:\\TestOrLearning\\ReturnToPunchcards\\Clocking.Api\\Clocking.Api.csproj",
+      "projectPath": "D:\\TestOrLearning\\ReturnToPunchcards\\Clocking-Api\\Clocking.Api.csproj",
       "packagesPath": "C:\\Users\\Statia-70\\.nuget\\packages\\",
-      "outputPath": "D:\\TestOrLearning\\ReturnToPunchcards\\Clocking.Api\\obj\\",
+      "outputPath": "D:\\TestOrLearning\\ReturnToPunchcards\\Clocking-Api\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Statia-70\\AppData\\Roaming\\NuGet\\NuGet.Config"
