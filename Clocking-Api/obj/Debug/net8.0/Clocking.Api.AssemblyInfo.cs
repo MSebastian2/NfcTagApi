@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Clocking.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8a17f427ee164570ffb4a43237f872916453008e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1bd3c2a133a948ce5f175bd6897fafc15e791eb3")]
 [assembly: System.Reflection.AssemblyProductAttribute("Clocking.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Clocking.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
