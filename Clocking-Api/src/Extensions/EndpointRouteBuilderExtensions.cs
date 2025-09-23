@@ -17,7 +17,7 @@ public static class EndpointRouteBuilderExtensions
         app.MapScanEndpoints();
 
         // Uncomment these as you add the corresponding feature files:
-        // app.MapWorkerEndpoints();
+        app.MapWorkerEndpoints();
         // app.MapReaderEndpoints();
         // app.MapReportEndpoints();
 

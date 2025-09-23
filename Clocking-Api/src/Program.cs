@@ -1,5 +1,6 @@
 using Clocking.Api.Data;
 using Clocking.Api.Extensions;
+using Clocking.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,10 +26,26 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+
+    if (!db.Workers.Any())
+    {
+        db.Workers.Add(new Worker
+        {
+            FullName = "Test Worker",
+            TagUid   = "04AABBCCDD22", // uppercase hex
+            IsActive = true
+        });
+        db.SaveChanges();
+    }
 }
 
-// Health check
-app.MapGet("/ping", () => Results.Ok(new { ok = true, at = DateTimeOffset.UtcNow }));
+
+// Health checks
+app.MapGet("/__debug/workers", async (AppDbContext db) =>
+    Results.Ok(await db.Workers
+        .Select(w => new { w.Id, w.FullName, w.TagUid, w.IsActive })
+        .ToListAsync()));
+
 
 // Feature endpoints (requires Extensions/EndpointRouteBuilderExtensions.cs)
 app.MapApiEndpoints();
