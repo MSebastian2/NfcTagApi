@@ -34,7 +34,14 @@ public enum ReaderType
 /// </summary>
 public enum ScanOrigin
 {
-    Nfc   = 1,   // NFC hardware (default)
-    Api   = 2,   // direct API call
+    Nfc = 1,   // NFC hardware (default)
+    Api = 2,   // direct API call
     Admin = 3    // backoffice/manual
+}
+
+public enum ScanType
+{
+    Unknown = 0,
+    In = 1,
+    Out = 2
 }

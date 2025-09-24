@@ -50,4 +50,25 @@ app.MapGet("/__debug/workers", async (AppDbContext db) =>
 // Feature endpoints (requires Extensions/EndpointRouteBuilderExtensions.cs)
 app.MapApiEndpoints();
 
+if (app.Environment.IsDevelopment()) app.UseDeveloperExceptionPage();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+    Directory.CreateDirectory(Path.Combine(env.ContentRootPath, "AppData"));
+
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+
+    if (!await db.Readers.AnyAsync(r => r.Code == "LAB-001"))
+        db.Readers.Add(new Reader { Code = "LAB-001", Name = "Lab door" });
+
+    if (!await db.Workers.AnyAsync(w => w.TagUid == "04AABBCCDD22"))
+        db.Workers.Add(new Worker { FullName = "Demo Worker", TagUid = "04AABBCCDD22" });
+
+    await db.SaveChangesAsync();
+}
+
 app.Run();
+
+public partial class Program { }

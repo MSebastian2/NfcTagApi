@@ -1,121 +1,98 @@
+using Microsoft.EntityFrameworkCore;
 using Clocking.Api.Data;
 using Clocking.Api.Data.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace Clocking.Api.Features.Scans;
 
-public static class Endpoints
+public static class ScanEndpoints
 {
     public static IEndpointRouteBuilder MapScanEndpoints(this IEndpointRouteBuilder app)
     {
-        var g = app.MapGroup("/scans");
-
-        // Main punch endpoint
-        g.MapPost("", HandleScan);
-
-        // Alias for convenience
-        app.MapPost("/punch", HandleScan);
-
-        return g;
+        app.MapPost("/punch", HandlePunch);
+        return app;
     }
 
-    /// <summary>
-    /// Handles a single NFC scan. Dedupe window prevents rapid double-taps.
-    /// If the worker has an open session -> clock OUT; otherwise -> clock IN.
-    /// </summary>
-    private static async Task<IResult> HandleScan(AppDbContext db, IConfiguration cfg, PunchRequestDto dto)
+    private static async Task<IResult> HandlePunch(PunchRequest req, AppDbContext db)
     {
-        if (string.IsNullOrWhiteSpace(dto.TagUid))
-            return Results.BadRequest(new { message = "TagUid is required" });
+        // Guard the request payload explicitly
+        var tagUid = req.TagUid?.Trim();
+        var readerCode = req.ReaderCode?.Trim();
 
-        var uid = dto.TagUid.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(tagUid) || string.IsNullOrWhiteSpace(readerCode))
+            return Results.BadRequest(new { error = "TagUid and ReaderCode are required." });
 
-        // Resolve optional reader (create-on-first-use so dev UX is easy)
-        Reader? reader = null;
-        if (!string.IsNullOrWhiteSpace(dto.ReaderCode))
-        {
-            var code = dto.ReaderCode.Trim().ToUpperInvariant();
-            reader = await db.Readers.FirstOrDefaultAsync(r => r.Code == code);
-            if (reader is null)
-            {
-                reader = new Reader { Code = code, Name = dto.ReaderCode.Trim(), IsActive = true };
-                db.Readers.Add(reader);
-                await db.SaveChangesAsync(); // need ID for FK
-            }
-        }
-
-        // Find active worker by tag
-        var worker = await db.Workers.FirstOrDefaultAsync(w => w.TagUid == uid && w.IsActive);
+        // Lookups that can be null -> checked before use
+        var worker = await db.Workers.SingleOrDefaultAsync(w => w.TagUid == tagUid);
         if (worker is null)
-            return Results.NotFound(new { message = "worker not found/active for tag", uid });
+            return Results.BadRequest(new { error = $"Unknown tag '{tagUid}'." });
 
-        var now = DateTimeOffset.UtcNow;
-        var windowSec = cfg.GetValue<int>("Punching:DuplicateWindowSeconds", 5);
+        var reader = await db.Readers.SingleOrDefaultAsync(r => r.Code == readerCode);
+        if (reader is null)
+            return Results.BadRequest(new { error = $"Unknown reader '{readerCode}'." });
 
-        // Dedupe: if the last scan for this worker (optionally same reader) is within the window, ignore
-        var recent = await db.Scans
-            .Where(s => s.WorkerId == worker.Id && (reader == null || s.ReaderId == reader.Id))
-            .OrderByDescending(s => s.OccurredAtUtc)
-            .FirstOrDefaultAsync();
+        var nowUtc = DateTime.UtcNow;
 
-        if (recent != null && (now - recent.OccurredAtUtc).TotalSeconds < windowSec)
-        {
-            return Results.Ok(new PunchResultDto(
-                created: false,
-                ignored: true,
-                action: "ignored",
-                at: recent.OccurredAtUtc
-            ));
-        }
-
-        // Log raw scan
-        var scan = new Scan
+        // Always record the raw scan
+        db.Scans.Add(new Scan
         {
             WorkerId = worker.Id,
-            ReaderId = reader?.Id,
-            Uid = uid,
-            OccurredAtUtc = now,
-            Origin = ScanOrigin.Nfc
-        };
-        db.Scans.Add(scan);
+            ReaderId = reader.Id,
+            WhenUtc = nowUtc,
+            Type = ScanType.Unknown
+        });
 
-        // Toggle session
+        // Try to close an open session; if none, start one
         var open = await db.WorkSessions
-            .Where(ws => ws.WorkerId == worker.Id && ws.EndUtc == null)
-            .OrderByDescending(ws => ws.StartUtc)
+            .Where(s => s.WorkerId == worker.Id && s.EndUtc == null)
+            .OrderByDescending(s => s.StartUtc)
             .FirstOrDefaultAsync();
 
-        string action;
         if (open is null)
         {
-            // Clock IN
             db.WorkSessions.Add(new WorkSession
             {
                 WorkerId = worker.Id,
-                StartUtc = now,
-                StartReaderId = reader?.Id
+                StartUtc = nowUtc,
+                StartReaderId = reader.Id
             });
-            action = "in";
+
+            db.Scans.Add(new Scan
+            {
+                WorkerId = worker.Id,
+                ReaderId = reader.Id,
+                WhenUtc = nowUtc,
+                Type = ScanType.In
+            });
+
+            await db.SaveChangesAsync();
+            return Results.Ok(new { status = "opened", startedAtUtc = nowUtc });
         }
         else
         {
-            // Clock OUT
-            open.EndUtc = now;
-            open.EndReaderId = reader?.Id;
-            action = "out";
+            // Assign to a local so the analyzer knows it's non-null when computing duration
+            var endedAtUtc = nowUtc;
+            open.EndUtc = endedAtUtc;
+            open.EndReaderId = reader.Id;
+
+            db.Scans.Add(new Scan
+            {
+                WorkerId = worker.Id,
+                ReaderId = reader.Id,
+                WhenUtc = endedAtUtc,
+                Type = ScanType.Out
+            });
+
+            await db.SaveChangesAsync();
+            var minutes = (endedAtUtc - open.StartUtc).TotalMinutes;
+
+            return Results.Ok(new { status = "closed", endedAtUtc, minutes });
         }
-
-        await db.SaveChangesAsync();
-
-        return Results.Created($"/scans/{scan.Id}", new PunchResultDto(
-            created: true,
-            ignored: false,
-            action: action,
-            at: now
-        ));
     }
+}
 
-    // Request/response contracts local to this feature
-    private record PunchRequestDto(string TagUid, string? ReaderCode);
-    private record PunchResultDto(bool created, bool ignored, string action, DateTimeOffset at);
+// Record with required properties; binder can still pass nulls, so we guard above.
+public sealed class PunchRequest
+{
+    public required string TagUid { get; init; }
+    public required string ReaderCode { get; init; }
 }

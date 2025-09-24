@@ -1,8 +1,12 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clocking-Api", "Clocking-Api\Clocking.Api.csproj", "{AD4D97C1-E08C-8A1D-BDCF-A1E9FE9F6B60}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3DC861FB-015A-4E04-8EA7-44B84AACEF21}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClockingApi.Tests", "tests\ClockingApi.Tests\ClockingApi.Tests.csproj", "{6912F26F-4179-42A2-80D3-FE73A6E97626}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,11 +18,18 @@ Global
 		{AD4D97C1-E08C-8A1D-BDCF-A1E9FE9F6B60}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AD4D97C1-E08C-8A1D-BDCF-A1E9FE9F6B60}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AD4D97C1-E08C-8A1D-BDCF-A1E9FE9F6B60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6912F26F-4179-42A2-80D3-FE73A6E97626}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6912F26F-4179-42A2-80D3-FE73A6E97626}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6912F26F-4179-42A2-80D3-FE73A6E97626}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6912F26F-4179-42A2-80D3-FE73A6E97626}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A7D132DD-B7A9-4DCC-B69E-9C61AFC98A26}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6912F26F-4179-42A2-80D3-FE73A6E97626} = {3DC861FB-015A-4E04-8EA7-44B84AACEF21}
 	EndGlobalSection
 EndGlobal
