@@ -23,8 +23,8 @@ public static class PunchEndpoints
 
             var open = await db.WorkSessions
                 .Where(s => s.WorkerId == worker.Id && s.EndUtc == null)
-                .OrderByDescending(s => s.StartUtc)
-                .FirstOrDefaultAsync();
+                .SingleOrDefaultAsync();
+
 
             if (open is null)
             {

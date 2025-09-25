@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Clocking.Api.Data;
 using Clocking.Api.Data.Entities;
 
-public sealed class TestingWebAppFactory : Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Clocking.Api.PublicApiMarker>
+public sealed class TestingWebAppFactory : WebApplicationFactory<Clocking.Api.PublicApiMarker>
 {
     private readonly string _dbPath = Path.Combine(
         Path.GetTempPath(), $"clocking-tests-{Guid.NewGuid():N}.db");

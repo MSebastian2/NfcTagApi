@@ -42,10 +42,10 @@ public static class ScanEndpoints
         });
 
         // Try to close an open session; if none, start one
+        // IMPORTANT: no ORDER BY on DateTimeOffset against SQLite
         var open = await db.WorkSessions
             .Where(s => s.WorkerId == worker.Id && s.EndUtc == null)
-            .OrderByDescending(s => s.StartUtc)
-            .FirstOrDefaultAsync();
+            .SingleOrDefaultAsync();
 
         if (open is null)
         {
