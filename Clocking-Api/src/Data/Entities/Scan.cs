@@ -20,6 +20,6 @@ public class Scan
     public DateTime WhenUtc { get; set; }
 
     /// <summary>Source of the scan (defaults to hardware NFC).</summary>
-    public ScanOrigin Origin { get; set; } = ScanOrigin.Nfc;
+    public ScanOrigin Origin { get; set; } = ScanOrigin.Api;
     public ScanType Type { get; set; } = ScanType.Unknown;
 }

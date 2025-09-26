@@ -32,9 +32,18 @@ using (var scope = app.Services.CreateScope())
         db.Workers.Add(new Worker
         {
             FullName = "Test Worker",
-            TagUid   = "04AABBCCDD22", // uppercase hex
-            IsActive = true
+            TagUid   = "04AABBCCDD22",
+            IsActive = true               // <- REQUIRED
         });
+
+        db.Readers.Add(new Reader
+        {
+            Code     = "LAB-001",
+            Name     = "LAB-001",
+            IsActive = true,              // <- REQUIRED
+            Type     = default     // <- if your Reader.Type is NOT NULL
+        });
+
         db.SaveChanges();
     }
 }

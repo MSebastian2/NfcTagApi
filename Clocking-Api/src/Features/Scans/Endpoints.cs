@@ -1,11 +1,15 @@
-using Microsoft.EntityFrameworkCore;
 using Clocking.Api.Data;
 using Clocking.Api.Data.Entities;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace Clocking.Api.Features.Scans;
 
 public static class ScanEndpoints
 {
+    public record PunchRequest(string TagUid, string ReaderCode);
+
     public static IEndpointRouteBuilder MapScanEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/punch", HandlePunch);
@@ -14,85 +18,78 @@ public static class ScanEndpoints
 
     private static async Task<IResult> HandlePunch(PunchRequest req, AppDbContext db)
     {
-        // Guard the request payload explicitly
-        var tagUid = req.TagUid?.Trim();
-        var readerCode = req.ReaderCode?.Trim();
-
-        if (string.IsNullOrWhiteSpace(tagUid) || string.IsNullOrWhiteSpace(readerCode))
+        if (string.IsNullOrWhiteSpace(req.TagUid) || string.IsNullOrWhiteSpace(req.ReaderCode))
             return Results.BadRequest(new { error = "TagUid and ReaderCode are required." });
 
-        // Lookups that can be null -> checked before use
-        var worker = await db.Workers.SingleOrDefaultAsync(w => w.TagUid == tagUid);
-        if (worker is null)
-            return Results.BadRequest(new { error = $"Unknown tag '{tagUid}'." });
+        var reader = await db.Readers.SingleOrDefaultAsync(r => r.Code == req.ReaderCode);
+        if (reader is null) return Results.NotFound(new { error = $"Reader '{req.ReaderCode}' not found" });
 
-        var reader = await db.Readers.SingleOrDefaultAsync(r => r.Code == readerCode);
-        if (reader is null)
-            return Results.BadRequest(new { error = $"Unknown reader '{readerCode}'." });
+        var worker = await db.Workers.SingleOrDefaultAsync(w => w.TagUid == req.TagUid && w.IsActive);
+        if (worker is null) return Results.NotFound(new { error = $"Active worker with TagUid '{req.TagUid}' not found" });
 
-        var nowUtc = DateTime.UtcNow;
+        var open = await db.WorkSessions.SingleOrDefaultAsync(ws => ws.WorkerId == worker.Id && ws.EndUtc == null);
 
-        // Always record the raw scan
-        db.Scans.Add(new Scan
-        {
-            WorkerId = worker.Id,
-            ReaderId = reader.Id,
-            WhenUtc = nowUtc,
-            Type = ScanType.Unknown
-        });
-
-        // Try to close an open session; if none, start one
-        // IMPORTANT: no ORDER BY on DateTimeOffset against SQLite
-        var open = await db.WorkSessions
-            .Where(s => s.WorkerId == worker.Id && s.EndUtc == null)
-            .SingleOrDefaultAsync();
+        var now = DateTime.UtcNow;
 
         if (open is null)
         {
-            db.WorkSessions.Add(new WorkSession
-            {
-                WorkerId = worker.Id,
-                StartUtc = nowUtc,
-                StartReaderId = reader.Id
-            });
-
+            // create IN scan  ⬇⬇⬇
             db.Scans.Add(new Scan
             {
                 WorkerId = worker.Id,
                 ReaderId = reader.Id,
-                WhenUtc = nowUtc,
-                Type = ScanType.In
+                WhenUtc  = now,
+                Type     = ScanType.In,         // enum
+                Origin   = ScanOrigin.Api,      // enum
+                Uid      = req.TagUid
             });
 
+            var session = new WorkSession
+            {
+                WorkerId      = worker.Id,
+                StartReaderId = reader.Id,
+                StartUtc      = now
+            };
+
+            db.WorkSessions.Add(session);
             await db.SaveChangesAsync();
-            return Results.Ok(new { status = "opened", startedAtUtc = nowUtc });
+
+            return Results.Created($"/work-sessions/{session.Id}", new
+            {
+                message = "Clock-in recorded",
+                session.Id,
+                worker = worker.FullName,
+                reader = reader.Code,
+                at = now
+            });
         }
         else
         {
-            // Assign to a local so the analyzer knows it's non-null when computing duration
-            var endedAtUtc = nowUtc;
-            open.EndUtc = endedAtUtc;
-            open.EndReaderId = reader.Id;
-
+            // create OUT scan  ⬇⬇⬇
             db.Scans.Add(new Scan
             {
                 WorkerId = worker.Id,
                 ReaderId = reader.Id,
-                WhenUtc = endedAtUtc,
-                Type = ScanType.Out
+                WhenUtc  = now,
+                Type     = ScanType.Out,        // enum
+                Origin   = ScanOrigin.Api,      // enum
+                Uid      = req.TagUid
             });
 
-            await db.SaveChangesAsync();
-            var minutes = (endedAtUtc - open.StartUtc).TotalMinutes;
+            open.EndReaderId = reader.Id;
+            open.EndUtc      = now;
 
-            return Results.Ok(new { status = "closed", endedAtUtc, minutes });
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new
+            {
+                message = "Clock-out recorded",
+                open.Id,
+                worker = worker.FullName,
+                reader = reader.Code,
+                started = open.StartUtc,
+                ended   = open.EndUtc
+            });
         }
     }
-}
-
-// Record with required properties; binder can still pass nulls, so we guard above.
-public sealed class PunchRequest
-{
-    public required string TagUid { get; init; }
-    public required string ReaderCode { get; init; }
 }
