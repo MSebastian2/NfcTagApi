@@ -65,29 +65,15 @@ public class AppDbContext : DbContext
         b.Entity<Scan>(e =>
         {
             e.HasKey(x => x.Id);
-
             e.Property(x => x.WhenUtc).IsRequired();
 
-            // map enums explicitly; NO HasDefaultValue(1) nonsense
-            e.Property(x => x.Origin)
-            .HasConversion<int>()
-            .IsRequired();
-
-            e.Property(x => x.Type)
-            .HasConversion<int>()
-            .IsRequired();
+            e.Property(x => x.Type).HasConversion<int>().IsRequired();
+            e.Property(x => x.Origin).HasConversion<int>().IsRequired();
 
             e.Property(x => x.Uid).HasMaxLength(64);
 
-            e.HasOne(x => x.Worker)
-            .WithMany(w => w.Scans)
-            .HasForeignKey(x => x.WorkerId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-            e.HasOne(x => x.Reader)
-            .WithMany()
-            .HasForeignKey(x => x.ReaderId)
-            .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Worker).WithMany(w => w.Scans).HasForeignKey(x => x.WorkerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Reader).WithMany().HasForeignKey(x => x.ReaderId).OnDelete(DeleteBehavior.SetNull);
 
             e.HasIndex(x => x.WhenUtc);
         });

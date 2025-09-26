@@ -16,35 +16,39 @@ public class PunchEndpointsTests : IClassFixture<TestingWebAppFactory>
         });
     }
 
-    private sealed record PunchResult(string status, double? minutes, DateTime? startedAtUtc, DateTime? endedAtUtc);
-
     [Fact]
     public async Task Punch_Open_Then_Close_Succeeds()
     {
-        var body = new { TagUid = "04AABBCCDD22", ReaderCode = "LAB-001" };
+        var request = new { TagUid = "04AABBCCDD22", ReaderCode = "LAB-001" };
 
-        var r1 = await _client.PostAsJsonAsync("/punch", body);
-        r1.StatusCode.Should().Be(HttpStatusCode.OK);
-        var j1 = await r1.Content.ReadFromJsonAsync<PunchResult>();
-        j1.Should().NotBeNull();
-        j1!.status.Should().Be("opened");
-        j1.startedAtUtc.Should().NotBeNull();
+        // first punch = open session -> 201 Created
+        var r1 = await _client.PostAsJsonAsync("/punch", request);
+        r1.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var r2 = await _client.PostAsJsonAsync("/punch", body);
+        var open = await r1.Content.ReadFromJsonAsync<OpenResponse>();
+        open.Should().NotBeNull();
+        open!.id.Should().BeGreaterOrEqualTo(1);
+        open.at.Should().BeOnOrAfter(DateTime.UtcNow.AddMinutes(-1));
+
+        // second punch = close session -> 200 OK
+        await Task.Delay(1000);
+        var r2 = await _client.PostAsJsonAsync("/punch", request);
         r2.StatusCode.Should().Be(HttpStatusCode.OK);
-        var j2 = await r2.Content.ReadFromJsonAsync<PunchResult>();
-        j2.Should().NotBeNull();
-        j2!.status.Should().Be("closed");
-        j2.minutes.Should().NotBeNull();
-        j2.minutes!.Value.Should().BeGreaterThanOrEqualTo(0);
-        j2.endedAtUtc.Should().NotBeNull();
+
+        var close = await r2.Content.ReadFromJsonAsync<CloseResponse>();
+        close.Should().NotBeNull();
+        close!.id.Should().Be(open.id);
+        close.ended.Should().BeOnOrAfter(close.started);
     }
 
     [Fact]
-    public async Task Punch_UnknownReader_Returns400()
+    public async Task Punch_UnknownReader_Returns404()
     {
-        var body = new { TagUid = "04AABBCCDD22", ReaderCode = "NOPE" };
-        var r = await _client.PostAsJsonAsync("/punch", body);
-        r.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var request = new { TagUid = "04AABBCCDD22", ReaderCode = "NOPE-999" };
+        var r = await _client.PostAsJsonAsync("/punch", request);
+        r.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    private record OpenResponse(string message, int id, string worker, string reader, DateTime at);
+    private record CloseResponse(string message, int id, string worker, string reader, DateTime started, DateTime ended);
 }
