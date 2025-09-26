@@ -19,4 +19,5 @@ public class Reader
     /// <summary>Optional location link.</summary>
     public int? LocationId { get; set; }
     public Location? Location { get; set; }
+    public string? ApiKey { get; set; }
 }

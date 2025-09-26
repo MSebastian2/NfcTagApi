@@ -44,6 +44,9 @@ public class AppDbContext : DbContext
             e.Property(x => x.Code).HasMaxLength(64).IsRequired();
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.ApiKey).HasMaxLength(64);
+            e.HasIndex(x => x.ApiKey);
+
 
             e.HasOne(x => x.Location)
              .WithMany(l => l.Readers)

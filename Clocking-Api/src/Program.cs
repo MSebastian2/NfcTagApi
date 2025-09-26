@@ -2,6 +2,7 @@ using Clocking.Api.Data;
 using Clocking.Api.Extensions;
 using Clocking.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Clocking.Api.Features.Admin;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,12 +15,15 @@ builder.Services.AddDbContext<AppDbContext>(opts =>
 });
 
 // CORS (open for now; tighten for prod)
-builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+builder.Services.AddCors(o =>
+    o.AddPolicy("dev", p => p
+        .WithOrigins("http://localhost:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 
 var app = builder.Build();
 
-app.UseCors();
+app.UseCors("dev");
 
 // Auto-apply migrations on startup (dev convenience)
 using (var scope = app.Services.CreateScope())
@@ -40,8 +44,8 @@ using (var scope = app.Services.CreateScope())
         {
             Code     = "LAB-001",
             Name     = "LAB-001",
-            IsActive = true,              // <- REQUIRED
-            Type     = default     // <- if your Reader.Type is NOT NULL
+            IsActive = true,
+            Type     = default
         });
 
         db.SaveChanges();
@@ -77,6 +81,8 @@ await using (var scope = app.Services.CreateAsyncScope())
 
     await db.SaveChangesAsync();
 }
+
+app.MapAdminApi();
 
 app.Run();
 
