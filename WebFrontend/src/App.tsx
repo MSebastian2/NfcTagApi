@@ -1,35 +1,29 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Link, Route, Routes, Navigate } from 'react-router-dom';
+import ReadersAutomation from './pages/ReadersAutomation';
+import WorkersBulk from './pages/WorkersBulk';
+import Reports from './pages/Reports';
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <BrowserRouter>
+      <div className="min-h-screen flex">
+        <aside className="w-64 border-r p-4 hidden md:block">
+          <div className="font-bold mb-6">Clocking Console</div>
+          <nav className="space-y-2 text-sm">
+            <div><Link to="/readers">Readers · Automation</Link></div>
+            <div><Link to="/workers/bulk">Workers · Bulk</Link></div>
+            <div><Link to="/reports">Reports</Link></div>
+          </nav>
+        </aside>
+        <main className="flex-1">
+          <Routes>
+            <Route path="/" element={<Navigate to="/readers" />} />
+            <Route path="/readers" element={<ReadersAutomation />} />
+            <Route path="/workers/bulk" element={<WorkersBulk />} />
+            <Route path="/reports" element={<Reports />} />
+          </Routes>
+        </main>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </BrowserRouter>
+  );
 }
-
-export default App
